@@ -1,0 +1,144 @@
+---
+title: "Economic Data 2024 - Mini Project 1"
+date: ""
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+
+## 1. Population Growth Analysis
+
+The data for this analysis was obtained from the World Bank using the **World Development Indicators (WDI)** using the WDI package in R. We focused on Spain’s demographic trends from 1980 to 2024 using the following key indicators:
+
+- **Total Population (SP.POP.TOTL)**
+- **Crude Birth Rate (SP.DYN.CBRT.IN)**
+- **Crude Death Rate (SP.DYN.CDRT.IN)**
+
+
+```{r}
+#____________________________
+# Load the required libraries
+library(WDI)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+#____________________________
+```
+
+
+
+```{r}
+#____________________________________________________________________________________
+# DOWNLOAD THE DATA                                                                 
+# multiple indicators from 1980 to 2024
+indicators <- c("SP.POP.TOTL",       # Total Population
+                "SP.DYN.CBRT.IN",    # Crude Birth Rate
+                "SP.DYN.CDRT.IN")    # Crude Death Rate
+
+# Get data for Spain from 1980 to 2024
+spain_data <- WDI(country = "ES", indicator = indicators, start = 1980, end = 2024)
+
+
+
+# Rename the columns to more descriptive names
+spain_data <- spain_data %>%
+  select(-iso2c, -iso3c) %>%   # Remove ISO2_Code and ISO3_Code
+  rename(
+    Country = country,
+    Year = year,
+    Total.Pop = SP.POP.TOTL,        # Total population
+    Crude.BR = SP.DYN.CBRT.IN,      # Crude birth rate
+    Crude.DR = SP.DYN.CDRT.IN       # Crude death rate
+  )
+
+# Save the renamed dataset as a CSV file
+write.csv(spain_data, "ESP_Population.csv", row.names = FALSE)
+#_______________________________________________________________________________________
+
+```
+
+Spain's population has shown a steady upward trend. The population has increases from 37.5 million to approximately 48.5 million over the past four decades. The population surged sharply between 2002 and 2008. This was driven by both a temporary rapid rise in the birth rates. In addition, a substantial immigration of over 5 million migrants entered the country during this period (Worlddata.info). 
+
+The growth then slowed down as declining birth rates and rising death rates began to exert pressure on demographic stability (see Figure 2).
+
+```{r fig.cap = "Population Growth in Spain (1980-2023)", fig.width=5, fig.height=4}
+#___________________________________________________________________________________
+# ANALYZE THE DATA                                                                  
+#___________________________________________________________________________________
+
+spain_data <- read.csv("ESP_Population.csv")
+# View the first few rows
+# head(spain_data)
+
+
+## Visualize Population Growth Trend
+ggplot(spain_data, aes(x=Year, y=Total.Pop)) +
+  geom_line(color="orange") +
+  ggtitle("Population Growth in Spain (2018-2023)") +
+  xlab("Year") +
+  ylab("Total Population") +
+  theme_bw()+
+  theme(plot.title = element_text(size = 12, color = "Darkblue"))
+#___________________________________________________________________________________
+```
+
+
+## 2. Births and Deaths
+
+To analyze trends in births and deaths, we calculated the number of births and deaths using the crude rates in relation to the total population. 
+
+The calculations were performed using the following formulas:
+
+\[
+\text{Births} = \text{Crude Birth Rate} \times \frac{\text{Total Population}}{1000}
+\]
+
+\[
+\text{Deaths} = \text{Crude Death Rate} \times \frac{\text{Total Population}}{1000}
+\]
+
+The chart (Figure 2) shows a clear drop in birth rates since the 1980s to early 2000s, while death rates have been steadily rising. This poses a challenge of an aging population and a shrinking workforce to support the economy. Births seems to to have a cyclic trends. Clearly, the sharp increase in population growth observed in Figure 1 was partly fueled by increased births from 2008 to 2008.
+
+The graph also shows that from 2016 onwards, birth rates have been significantly below replacement levels. In response, this explains why Spain has become increasingly dependent on migration to offset these imbalances.
+
+
+```{r fig.cap="Total Births and Deaths in Spain (1980-2023)", fig.width=5,fig.height=4}
+#___________________________________________________________________________________
+## Compare Births and Deaths Over time
+# Calculate Births and Deaths 
+spain_data<- spain_data %>%
+  select(Year, Total.Pop, Crude.BR, Crude.DR) %>%
+  mutate(Births = Crude.BR * Total.Pop / 1000,
+         Deaths = Crude.DR * Total.Pop / 1000)
+
+# Reshape the data
+spain_data_long <- spain_data %>%
+  select(Year, Births, Deaths) %>%
+  pivot_longer(cols = c(Births, Deaths), 
+               names_to = "Variable", 
+               values_to = "Value")
+
+## Compare Births and Deaths Over time
+ggplot(spain_data_long, aes(x = Year, y = Value, color = Variable)) +
+  geom_line(size = 1) +
+  labs(title = "Total Births and Deaths in Spain (1980-2023)",
+       x = "Year",
+       y = "Number of Births/Deaths") +
+  scale_color_manual(values = c("Births" = "green", "Deaths" = "red")) +
+  scale_y_continuous(labels = scales::comma) +  # Format y-axis labels with commas
+  theme_light() +
+  theme(legend.position = c(0.9, 0.9),  # Adjust the position (x, y) of the legend
+        legend.title = element_blank(),
+        plot.title = element_text(size = 12, color = "Darkblue"),  # Adjust title size
+        axis.text.y = element_text(angle = 90, hjust = 1))  # Rotate y-axis text by 90 degrees
+#___________________________________________________________________________________
+```
+
+
+
+
